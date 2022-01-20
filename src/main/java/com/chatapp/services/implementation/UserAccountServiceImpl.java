@@ -2,6 +2,7 @@ package com.chatapp.services.implementation;
 
 import com.chatapp.exception.UserAccountNotFoundException;
 import com.chatapp.model.UserAccount;
+import com.chatapp.model.UserPersonalInfo;
 import com.chatapp.repository.UserAccountRepository;
 import com.chatapp.services.UserAccountService;
 import com.google.firebase.FirebaseApp;
@@ -65,7 +66,29 @@ public class UserAccountServiceImpl implements UserAccountService {
         return null;
     }
 
-    public String getBearerToken(String authorizationHeader) {
+    @Override
+    public ResponseEntity<UserAccount> updateUserPersonalInfo(UserPersonalInfo userPersonalInfo, String authorizationHeader) throws FirebaseAuthException {
+        String accessToken = getBearerToken(authorizationHeader);
+        String email = FirebaseAuth.getInstance(FirebaseApp.getInstance())
+                .verifyIdToken(accessToken, true)
+                .getEmail();
+        UserAccount updatedUserAccount = repository.findUserAccountByEmail(email).map(userAccount -> {
+            UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
+            userAccount = userAccountBuilder
+                    .firstName(userPersonalInfo.firstName)
+                    .lastName(userPersonalInfo.lastName)
+                    .address(userPersonalInfo.address)
+                    .city(userPersonalInfo.city)
+                    .state(userPersonalInfo.state)
+                    .country(userPersonalInfo.country)
+                    .zipCode(userPersonalInfo.zipCode)
+                    .build();
+            return repository.save(userAccount);
+        }).orElseThrow(() -> new UserAccountNotFoundException(email));
+        return ResponseEntity.status(201).body(updatedUserAccount);
+    }
+
+    private String getBearerToken(String authorizationHeader) {
         String bearerToken = null;
         if (StringUtils.hasText(authorizationHeader) && authorizationHeader.startsWith("Bearer ")) {
             bearerToken = authorizationHeader.substring(7);
