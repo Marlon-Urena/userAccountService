@@ -18,23 +18,44 @@ public class UserAccountController {
         this.userAccountService = userAccountService;
     }
 
-    @PostMapping(path="/user")
+    @PostMapping(path = "/user")
     public UserAccount getUser(@RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException {
         return userAccountService.findUserAccount(authorizationHeader);
     }
 
-    @PostMapping(path="/register")
+    @PostMapping(path = "/register")
     public ResponseEntity<UserAccount> createUser(@RequestBody UserAccount newUserAccount) {
         return userAccountService.addUserAccount(newUserAccount);
     }
 
-    @PutMapping(path="/user")
-    public ResponseEntity<UserAccount> updateUser(@RequestBody UserAccount userAccount, @RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException {
+    @PostMapping(path = "/email-availability")
+    public Boolean checkEmailAvailability(@RequestBody String email) {
+        return userAccountService.checkEmailAvailability(email);
+    }
+
+    @PostMapping(path = "/username-availability")
+    public Boolean checkUsernameAvailability(@RequestBody String username) {
+        return userAccountService.checkUsernameAvailability(username);
+    }
+
+    @PutMapping(path = "/user")
+    public ResponseEntity<UserAccount> updateUser(
+            @RequestBody UserAccount userAccount,
+            @RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException {
         return userAccountService.updateUserAccount(userAccount, authorizationHeader);
     }
 
     @PutMapping(path = "/user/personal_info")
-    public ResponseEntity<UserAccount> updateUserPersonalInfo(@RequestBody UserPersonalInfo userPersonalInfo, @RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException {
+    public ResponseEntity<UserAccount> updateUserPersonalInfo(
+            @RequestBody UserPersonalInfo userPersonalInfo,
+            @RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException {
         return userAccountService.updateUserPersonalInfo(userPersonalInfo, authorizationHeader);
+    }
+
+    @PatchMapping(path = "/user/change_email")
+    public ResponseEntity<UserAccount> updateEmail(
+            @RequestBody String newEmail,
+            @RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException {
+        return userAccountService.updateEmail(newEmail, authorizationHeader);
     }
 }

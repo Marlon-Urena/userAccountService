@@ -1,5 +1,6 @@
 package com.chatapp.services.implementation;
 
+import com.chatapp.exception.EmailExistsException;
 import com.chatapp.exception.UserAccountNotFoundException;
 import com.chatapp.model.UserAccount;
 import com.chatapp.model.UserPersonalInfo;
@@ -85,6 +86,36 @@ public class UserAccountServiceImpl implements UserAccountService {
                     .build();
             return repository.save(userAccount);
         }).orElseThrow(() -> new UserAccountNotFoundException(email));
+        return ResponseEntity.status(201).body(updatedUserAccount);
+    }
+
+    @Override
+    public Boolean checkUsernameAvailability(String username) {
+        return repository.existsUserAccountByUsername(username);
+    }
+
+    @Override
+    public Boolean checkEmailAvailability(String email) {
+        return repository.existsUserAccountByEmail(email);
+    }
+
+    @Override
+    public ResponseEntity<UserAccount> updateEmail(String newEmail, String authorizationHeader) throws FirebaseAuthException {
+        String accessToken = getBearerToken(authorizationHeader);
+        String email = FirebaseAuth.getInstance(FirebaseApp.getInstance())
+                .verifyIdToken(accessToken, true).getEmail();
+        boolean emailExists = repository.existsUserAccountByEmail(email);
+        if (emailExists) {
+            throw new EmailExistsException(newEmail);
+        }
+        UserAccount updatedUserAccount = repository.findUserAccountByEmail(email).map(userAccount -> {
+            UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
+            userAccount = userAccountBuilder
+                    .email(newEmail)
+                    .build();
+            return repository.save(userAccount);
+        }).orElseThrow(() -> new UserAccountNotFoundException(email));
+
         return ResponseEntity.status(201).body(updatedUserAccount);
     }
 
