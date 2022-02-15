@@ -8,6 +8,7 @@ import com.chatapp.model.UserPersonalInfo;
 import com.chatapp.repository.UserAccountRepository;
 import com.chatapp.services.UserAccountService;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.NoCredentials;
 import com.google.cloud.storage.*;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
@@ -166,7 +167,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         Storage emulatorStorage = StorageOptions.newBuilder()
                 .setProjectId("holidayclub")
                 .setHost(emulatorHostPort)
-                .setCredentials(GoogleCredentials.getApplicationDefault())
+                .setCredentials(NoCredentials.getInstance())
                 .build()
                 .getService();
         BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
