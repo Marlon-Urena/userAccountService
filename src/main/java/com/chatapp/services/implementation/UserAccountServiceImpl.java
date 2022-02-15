@@ -178,7 +178,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType(photo.getContentType()).build();
         System.out.println("Obtained emulatorStorage");
-        Blob blob = emulatorStorage.createFrom(blobInfo, photo.getInputStream());
+        Blob blob = emulatorStorage.create(blobInfo, photo.getBytes());
         UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink().replaceFirst("0\\.0\\.0\\.0", "91.125.116.125"));
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
         userAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
