@@ -175,6 +175,7 @@ public class UserAccountServiceImpl implements UserAccountService {
                 .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                 .build()
                 .getService();
+        System.out.println("Obtained emulatorStorage");
         BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType(photo.getContentType()).build();
         Blob blob = emulatorStorage.createFrom(blobInfo, photo.getInputStream());// blob is null
