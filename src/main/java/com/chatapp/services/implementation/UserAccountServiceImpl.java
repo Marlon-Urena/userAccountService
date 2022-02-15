@@ -20,7 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class UserAccountServiceImpl implements UserAccountService {
@@ -162,12 +165,14 @@ public class UserAccountServiceImpl implements UserAccountService {
                 .findUserAccountByEmail(email)
                 .orElseThrow(() -> new UserAccountNotFoundException(email));
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
+        String serviceAccountJson = System.getenv("SERVICE_ACCOUNT_JSON");
+        InputStream serviceAccount = new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8));
         String emulatorHostPort = System.getenv("FIREBASE_STORAGE_EMULATOR_HOST"); // replace with the correct port for your emulator instance
         System.out.println(emulatorHostPort);
         Storage emulatorStorage = StorageOptions.newBuilder()
                 .setProjectId("holidayclub")
                 .setHost(emulatorHostPort)
-                .setCredentials(NoCredentials.getInstance())
+                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
                 .build()
                 .getService();
         BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
