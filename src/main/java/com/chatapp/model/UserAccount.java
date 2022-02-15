@@ -25,4 +25,10 @@ public class UserAccount {
     private String state;
     private String country;
     private String zipCode;
+
+    @Transient
+    private String phoneNumber;
+
+    @Transient
+    private String photoUrl;
 }

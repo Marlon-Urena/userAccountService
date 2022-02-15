@@ -7,6 +7,9 @@ import com.google.firebase.auth.FirebaseAuthException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @RestController @CrossOrigin
 public class UserAccountController {
@@ -58,4 +61,19 @@ public class UserAccountController {
             @RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException {
         return userAccountService.updateEmail(newEmail, authorizationHeader);
     }
+
+    @PatchMapping(path = "/user/change_username")
+    public ResponseEntity<UserAccount> updateUsername(
+            @RequestBody String newUsername,
+            @RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException {
+        return userAccountService.updateUsername(newUsername, authorizationHeader);
+    }
+
+    @PostMapping(path = "/user/change_profile_photo")
+    public ResponseEntity<UserAccount> updateProfilePhoto(
+            @RequestParam("file") MultipartFile photo,
+            @RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException, IOException {
+        return userAccountService.updateProfilePhoto(photo, authorizationHeader);
+    }
+
 }

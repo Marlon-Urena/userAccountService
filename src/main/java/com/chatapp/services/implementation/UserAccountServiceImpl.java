@@ -2,17 +2,24 @@ package com.chatapp.services.implementation;
 
 import com.chatapp.exception.EmailExistsException;
 import com.chatapp.exception.UserAccountNotFoundException;
+import com.chatapp.exception.UsernameExistsException;
 import com.chatapp.model.UserAccount;
 import com.chatapp.model.UserPersonalInfo;
 import com.chatapp.repository.UserAccountRepository;
 import com.chatapp.services.UserAccountService;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.cloud.storage.*;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.UserRecord;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 @Service
 public class UserAccountServiceImpl implements UserAccountService {
@@ -26,17 +33,17 @@ public class UserAccountServiceImpl implements UserAccountService {
 
     @Override
     public UserAccount findUserAccount(String authorizationHeader) throws FirebaseAuthException {
-        String email;
         String accessToken = getBearerToken(authorizationHeader);
-        try {
-            email = FirebaseAuth.getInstance(FirebaseApp.getInstance())
-                        .verifyIdToken(accessToken, true)
-                        .getEmail();
-        } catch (FirebaseAuthException e) {
-            throw new FirebaseAuthException(e.getErrorCode(), e.getMessage(), e.getCause(), e.getHttpResponse(), e.getAuthErrorCode());
-        }
-        String finalEmail = email;
-        return repository.findUserAccountByEmail(email).orElseThrow(() -> new UserAccountNotFoundException(finalEmail));
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
+        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
+        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
+        return repository.findUserAccountByEmail(email).map(userAccount -> {
+            UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
+            return userAccountBuilder
+                    .phoneNumber(userRecord.getPhoneNumber())
+                    .photoUrl(userRecord.getPhotoUrl())
+                    .build();
+        }).orElseThrow(() -> new UserAccountNotFoundException(email));
     }
 
     @Override
@@ -46,14 +53,9 @@ public class UserAccountServiceImpl implements UserAccountService {
 
     @Override
     public ResponseEntity<UserAccount> updateUserAccount(UserAccount newUserDetails, String authorizationHeader) throws FirebaseAuthException {
-        String email = newUserDetails.getEmail();
         String accessToken = getBearerToken(authorizationHeader);
-        try {
-            FirebaseAuth.getInstance(FirebaseApp.getInstance())
-                    .verifyIdToken(accessToken, true);
-        } catch (FirebaseAuthException e) {
-            throw new FirebaseAuthException(e.getErrorCode(), e.getMessage(), e.getCause(), e.getHttpResponse(), e.getAuthErrorCode());
-        }
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
+        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
         UserAccount updatedUserAccount = repository.findUserAccountByEmail(email).map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = newUserDetails.toBuilder();
             userAccount = userAccountBuilder.email(email).build();
@@ -70,9 +72,9 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUserPersonalInfo(UserPersonalInfo userPersonalInfo, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        String email = FirebaseAuth.getInstance(FirebaseApp.getInstance())
-                .verifyIdToken(accessToken, true)
-                .getEmail();
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
+        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
+        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
         UserAccount updatedUserAccount = repository.findUserAccountByEmail(email).map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
             userAccount = userAccountBuilder
@@ -83,6 +85,8 @@ public class UserAccountServiceImpl implements UserAccountService {
                     .state(userPersonalInfo.state)
                     .country(userPersonalInfo.country)
                     .zipCode(userPersonalInfo.zipCode)
+                    .phoneNumber(userRecord.getPhoneNumber())
+                    .photoUrl(userRecord.getPhotoUrl())
                     .build();
             return repository.save(userAccount);
         }).orElseThrow(() -> new UserAccountNotFoundException(email));
@@ -102,21 +106,82 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateEmail(String newEmail, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        String email = FirebaseAuth.getInstance(FirebaseApp.getInstance())
-                .verifyIdToken(accessToken, true).getEmail();
-        boolean emailExists = repository.existsUserAccountByEmail(email);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
+        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
+        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
+        boolean emailExists = repository.existsUserAccountByEmail(newEmail);
         if (emailExists) {
             throw new EmailExistsException(newEmail);
         }
-        UserAccount updatedUserAccount = repository.findUserAccountByEmail(email).map(userAccount -> {
+        UserAccount updatedUserAccount = repository.findUserAccountByEmail(email)
+                .map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
-            userAccount = userAccountBuilder
-                    .email(newEmail)
-                    .build();
+            userAccount = userAccountBuilder.email(newEmail).build();
+            repository.deleteById(email);
             return repository.save(userAccount);
         }).orElseThrow(() -> new UserAccountNotFoundException(email));
-
+        UserRecord.UpdateRequest request = userRecord.updateRequest().setEmail(newEmail);
+        UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
+        updatedUserAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
+        updatedUserAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
         return ResponseEntity.status(201).body(updatedUserAccount);
+    }
+
+    @Override
+    public ResponseEntity<UserAccount> updateUsername(String newUsername, String authorizationHeader) throws FirebaseAuthException {
+        String accessToken = getBearerToken(authorizationHeader);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
+        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
+        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
+        boolean usernameExists = repository.existsUserAccountByUsername(newUsername);
+        if (usernameExists) {
+            throw new UsernameExistsException(newUsername);
+        }
+        UserAccount updatedUserAccount = repository.findUserAccountByEmail(email)
+                .map(userAccount -> {
+                    UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
+                    userAccount = userAccountBuilder
+                            .username(newUsername)
+                            .build();
+                    return repository.save(userAccount);
+                }).orElseThrow(() -> new UserAccountNotFoundException(email));
+        UserRecord.UpdateRequest request = userRecord.updateRequest().setDisplayName(newUsername);
+        UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
+        updatedUserAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
+        updatedUserAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
+        return ResponseEntity.status(201).body(updatedUserAccount);
+    }
+
+    @Override
+    public ResponseEntity<UserAccount> updateProfilePhoto(MultipartFile photo, String authorizationHeader) throws FirebaseAuthException, IOException {
+        String accessToken = getBearerToken(authorizationHeader);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
+        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
+        UserAccount userAccount = repository
+                .findUserAccountByEmail(email)
+                .orElseThrow(() -> new UserAccountNotFoundException(email));
+        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
+        String emulatorHostPort = "http://localhost:9199"; // replace with the correct port for your emulator instance
+
+        Storage emulatorStorage = StorageOptions.newBuilder()
+                .setProjectId("holidayclub")
+                .setHost(emulatorHostPort)
+                .setCredentials(GoogleCredentials.getApplicationDefault())
+                .build()
+                .getService();
+        BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
+        BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType(photo.getContentType()).build();
+        Blob blob = emulatorStorage.createFrom(blobInfo, photo.getInputStream());// blob is null
+        UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink());
+        UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
+        userAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
+        userAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
+        return ResponseEntity.status(201).body(userAccount);
+    }
+
+    private String getUIDFromEmail(String email) throws FirebaseAuthException {
+        FirebaseAuth firebaseInstance = FirebaseAuth.getInstance(FirebaseApp.getInstance());
+        return firebaseInstance.getUserByEmail(email).getUid();
     }
 
     private String getBearerToken(String authorizationHeader) {

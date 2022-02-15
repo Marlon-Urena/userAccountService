@@ -1,11 +1,12 @@
 package com.chatapp.services;
 
-import com.chatapp.model.ChangePasswordForm;
 import com.chatapp.model.UserAccount;
 import com.chatapp.model.UserPersonalInfo;
 import com.google.firebase.auth.FirebaseAuthException;
-import org.apache.catalina.User;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 public interface UserAccountService {
     UserAccount findUserAccount(String accessToken) throws FirebaseAuthException;
@@ -16,4 +17,6 @@ public interface UserAccountService {
     Boolean checkUsernameAvailability(String username);
     Boolean checkEmailAvailability(String email);
     ResponseEntity<UserAccount> updateEmail(String newEmail, String authorizationHeader) throws FirebaseAuthException;
+    ResponseEntity<UserAccount> updateUsername(String newUsername, String authorizationHeader) throws FirebaseAuthException;
+    ResponseEntity<UserAccount> updateProfilePhoto(MultipartFile photo, String authorizationHeader) throws FirebaseAuthException, IOException;
 }
