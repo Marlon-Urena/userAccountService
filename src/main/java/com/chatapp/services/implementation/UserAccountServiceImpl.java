@@ -166,14 +166,12 @@ public class UserAccountServiceImpl implements UserAccountService {
                 .findUserAccountByEmail(email)
                 .orElseThrow(() -> new UserAccountNotFoundException(email));
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
-        String serviceAccountJson = System.getenv("SERVICE_ACCOUNT_JSON");
-        InputStream serviceAccount = new ByteArrayInputStream(serviceAccountJson.getBytes(StandardCharsets.UTF_8));
         String emulatorHostPort = System.getenv("FIREBASE_STORAGE_EMULATOR_HOST"); // replace with the correct port for your emulator instance
         System.out.println(emulatorHostPort);
         Storage emulatorStorage = StorageOptions.newBuilder()
                 .setProjectId("holidayclub")
                 .setHost(emulatorHostPort)
-                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .setCredentials(NoCredentials.getInstance())
                 .build()
                 .getService();
         BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
@@ -181,7 +179,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         InputStream inputStream = new BufferedInputStream(photo.getInputStream());
         System.out.println("Obtained inputStream");
         Blob blob = emulatorStorage.createFrom(blobInfo, inputStream);
-        UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink().replaceFirst("0\\.0\\.0\\.0", "localhost"));
+        UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink().replaceFirst("0\\.0\\.0\\.0", "91.125.116.125"));
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
         userAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
         userAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
