@@ -178,6 +178,8 @@ public class UserAccountServiceImpl implements UserAccountService {
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType(photo.getContentType()).build();
         InputStream inputStream = new BufferedInputStream(photo.getInputStream());
         System.out.println("Obtained inputStream");
+        Bucket bucket = emulatorStorage.get("default-bucket");
+        System.out.println(bucket.getName());
         Blob blob = emulatorStorage.createFrom(blobInfo, inputStream);
         UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink().replaceFirst("0\\.0\\.0\\.0", "91.125.116.125"));
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
