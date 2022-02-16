@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -178,8 +179,8 @@ public class UserAccountServiceImpl implements UserAccountService {
         BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType(photo.getContentType()).build();
         System.out.println("Obtained emulatorStorage");
-        Blob blob = emulatorStorage.createFrom(blobInfo, photo.getInputStream());
-        UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink().replaceFirst("0\\.0\\.0\\.0", "91.125.116.125"));
+        Blob blob = emulatorStorage.createFrom(blobInfo, new BufferedInputStream(photo.getInputStream()));
+        UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink().replaceFirst("0\\.0\\.0\\.0", "localhost"));
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
         userAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
         userAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
