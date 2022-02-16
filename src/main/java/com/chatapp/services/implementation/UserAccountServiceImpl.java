@@ -166,7 +166,7 @@ public class UserAccountServiceImpl implements UserAccountService {
                 .findUserAccountByEmail(email)
                 .orElseThrow(() -> new UserAccountNotFoundException(email));
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
-        String emulatorHostPort = System.getenv("FIREBASE_STORAGE_EMULATOR_HOST"); // replace with the correct port for your emulator instance
+        String emulatorHostPort = System.getenv("EMULATOR_HOST"); // replace with the correct port for your emulator instance
         System.out.println(emulatorHostPort);
         Storage emulatorStorage = StorageOptions.newBuilder()
                 .setProjectId("holidayclub")
