@@ -14,6 +14,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
+import com.google.firebase.cloud.StorageClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -168,6 +169,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
         String emulatorHostPort = System.getenv("EMULATOR_HOST"); // replace with the correct port for your emulator instance
         System.out.println(emulatorHostPort);
+
         Storage emulatorStorage = StorageOptions.newBuilder()
                 .setProjectId("holidayclub")
                 .setHost(emulatorHostPort)
@@ -178,8 +180,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType(photo.getContentType()).build();
         InputStream inputStream = new BufferedInputStream(photo.getInputStream());
         System.out.println("Obtained inputStream");
-        Bucket bucket = emulatorStorage.get("default-bucket");
-        System.out.println(bucket.toString());
+        System.out.println(inputStream.available());
         Blob blob = emulatorStorage.createFrom(blobInfo, inputStream);
         UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink().replaceFirst("0\\.0\\.0\\.0", "91.125.116.125"));
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
