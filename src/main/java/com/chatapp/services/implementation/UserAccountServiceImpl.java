@@ -35,6 +35,12 @@ import java.nio.charset.StandardCharsets;
 public class UserAccountServiceImpl implements UserAccountService {
 
     private final UserAccountRepository repository;
+    private Storage emulatorStorage = StorageOptions.newBuilder()
+            .setProjectId("holidayclub")
+            .setHost(System.getenv("EMULATOR_HOST"))
+            .setCredentials(NoCredentials.getInstance())
+            .build()
+            .getService();
 
     @Autowired
     public UserAccountServiceImpl(UserAccountRepository repository) {
@@ -171,15 +177,6 @@ public class UserAccountServiceImpl implements UserAccountService {
                 .findUserAccountByEmail(email)
                 .orElseThrow(() -> new UserAccountNotFoundException(email));
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
-        String emulatorHostPort = System.getenv("EMULATOR_HOST"); // replace with the correct port for your emulator instance
-        System.out.println(emulatorHostPort);
-
-        Storage emulatorStorage = StorageOptions.newBuilder()
-                .setProjectId("holidayclub")
-                .setHost(emulatorHostPort)
-                .setCredentials(NoCredentials.getInstance())
-                .build()
-                .getService();
         BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
         Hasher hasher = Hashing.crc32c().newHasher().putBytes(photo.getBytes());
         String crc32c = BaseEncoding.base64().encode(Ints.toByteArray(hasher.hash().asInt()));
