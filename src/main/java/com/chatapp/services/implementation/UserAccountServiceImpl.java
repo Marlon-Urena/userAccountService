@@ -10,6 +10,10 @@ import com.chatapp.services.UserAccountService;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.NoCredentials;
 import com.google.cloud.storage.*;
+import com.google.common.hash.Hasher;
+import com.google.common.hash.Hashing;
+import com.google.common.io.BaseEncoding;
+import com.google.common.primitives.Ints;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
@@ -177,7 +181,12 @@ public class UserAccountServiceImpl implements UserAccountService {
                 .build()
                 .getService();
         BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
-        BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType(photo.getContentType()).build();
+        Hasher hasher = Hashing.crc32c().newHasher().putBytes(photo.getBytes());
+        String crc32c = BaseEncoding.base64().encode(Ints.toByteArray(hasher.hash().asInt()));
+        BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
+                .setContentType(photo.getContentType())
+                .setCrc32c(crc32c)
+                .build();
         InputStream inputStream = new BufferedInputStream(photo.getInputStream());
         System.out.println("Obtained inputStream");
         System.out.println(inputStream.available());
@@ -187,7 +196,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         catch(Exception e) {
             System.out.println("Failed exception");
         }
-        Blob blob = emulatorStorage.createFrom(blobInfo, inputStream);
+        Blob blob = emulatorStorage.createFrom(blobInfo, inputStream, Storage.BlobWriteOption.crc32cMatch());
         UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink().replaceFirst("0\\.0\\.0\\.0", "91.125.116.125"));
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
         userAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
