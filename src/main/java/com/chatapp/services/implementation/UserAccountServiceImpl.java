@@ -25,16 +25,17 @@ import java.io.IOException;
 public class UserAccountServiceImpl implements UserAccountService {
 
     private final UserAccountRepository repository;
+    private final FirebaseAuth firebaseAuth;
 
     @Autowired
     public UserAccountServiceImpl(UserAccountRepository repository) {
         this.repository = repository;
+        this.firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
     }
 
     @Override
     public UserAccount findUserAccount(String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
         return repository.findUserAccountByEmail(email).map(userAccount -> {
@@ -54,7 +55,6 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUserAccount(UserAccount newUserDetails, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
         UserAccount updatedUserAccount = repository.findUserAccountByEmail(email).map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = newUserDetails.toBuilder();
@@ -72,7 +72,6 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUserPersonalInfo(UserPersonalInfo userPersonalInfo, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
         UserAccount updatedUserAccount = repository.findUserAccountByEmail(email).map(userAccount -> {
@@ -106,7 +105,6 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateEmail(String newEmail, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
         boolean emailExists = repository.existsUserAccountByEmail(newEmail);
@@ -130,7 +128,6 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUsername(String newUsername, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
         boolean usernameExists = repository.existsUserAccountByUsername(newUsername);
@@ -155,7 +152,6 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateProfilePhoto(MultipartFile photo, String authorizationHeader) throws FirebaseAuthException, IOException {
         String accessToken = getBearerToken(authorizationHeader);
-        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
         UserAccount userAccount = repository
                 .findUserAccountByEmail(email)
