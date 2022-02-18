@@ -7,13 +7,7 @@ import com.chatapp.model.UserAccount;
 import com.chatapp.model.UserPersonalInfo;
 import com.chatapp.repository.UserAccountRepository;
 import com.chatapp.services.UserAccountService;
-import com.google.auth.oauth2.GoogleCredentials;
-import com.google.cloud.NoCredentials;
 import com.google.cloud.storage.*;
-import com.google.common.hash.Hasher;
-import com.google.common.hash.Hashing;
-import com.google.common.io.BaseEncoding;
-import com.google.common.primitives.Ints;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
@@ -25,22 +19,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
 @Service
 public class UserAccountServiceImpl implements UserAccountService {
 
     private final UserAccountRepository repository;
-    private Storage emulatorStorage = StorageOptions.newBuilder()
-            .setProjectId("holidayclub")
-            .setHost(System.getenv("EMULATOR_HOST"))
-            .setCredentials(NoCredentials.getInstance())
-            .build()
-            .getService();
 
     @Autowired
     public UserAccountServiceImpl(UserAccountRepository repository) {
@@ -177,24 +161,10 @@ public class UserAccountServiceImpl implements UserAccountService {
                 .findUserAccountByEmail(email)
                 .orElseThrow(() -> new UserAccountNotFoundException(email));
         UserRecord userRecord = firebaseAuth.getUserByEmail(email);
-        BlobId blobId = BlobId.of("default-bucket", photo.getOriginalFilename());
-        Hasher hasher = Hashing.crc32c().newHasher().putBytes(photo.getBytes());
-        String crc32c = BaseEncoding.base64().encode(Ints.toByteArray(hasher.hash().asInt()));
-        BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
-                .setContentType(photo.getContentType())
-                .setCrc32c(crc32c)
-                .build();
-        InputStream inputStream = new BufferedInputStream(photo.getInputStream());
-        System.out.println("Obtained inputStream");
-        System.out.println(inputStream.available());
-        try {
-            Thread.sleep(1000);
-        }
-        catch(Exception e) {
-            System.out.println("Failed exception");
-        }
-        Blob blob = emulatorStorage.createFrom(blobInfo, inputStream, Storage.BlobWriteOption.crc32cMatch());
-        UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(blob.getMediaLink().replaceFirst("0\\.0\\.0\\.0", "91.125.116.125"));
+        Bucket bucket = StorageClient.getInstance().bucket();
+        Blob blob = bucket.create(photo.getOriginalFilename(), photo.getInputStream(), photo.getContentType());
+        String mediaUrl = buildMediaUrl(bucket.getName(), blob.getName());
+        UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(mediaUrl);
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
         userAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
         userAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
@@ -204,6 +174,10 @@ public class UserAccountServiceImpl implements UserAccountService {
     private String getUIDFromEmail(String email) throws FirebaseAuthException {
         FirebaseAuth firebaseInstance = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         return firebaseInstance.getUserByEmail(email).getUid();
+    }
+
+    private String buildMediaUrl(String bucketName, String blobName) {
+        return String.format("https://firebasestorage.googleapis.com/v0/b/%s/o/%s?alt=media", bucketName, blobName);
     }
 
     private String getBearerToken(String authorizationHeader) {
