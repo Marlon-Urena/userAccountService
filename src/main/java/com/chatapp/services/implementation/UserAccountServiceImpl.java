@@ -36,15 +36,15 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public UserAccount findUserAccount(String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
-        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
-        return repository.findUserAccountByEmail(email).map(userAccount -> {
+        String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
+        UserRecord userRecord = firebaseAuth.getUser(uid);
+        return repository.findById(uid).map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
             return userAccountBuilder
                     .phoneNumber(userRecord.getPhoneNumber())
                     .photoUrl(userRecord.getPhotoUrl())
                     .build();
-        }).orElseThrow(() -> new UserAccountNotFoundException(email));
+        }).orElseThrow(() -> new UserAccountNotFoundException(uid));
     }
 
     @Override
@@ -55,12 +55,12 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUserAccount(UserAccount newUserDetails, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
-        UserAccount updatedUserAccount = repository.findUserAccountByEmail(email).map(userAccount -> {
+        String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
+        UserAccount updatedUserAccount = repository.findById(uid).map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = newUserDetails.toBuilder();
-            userAccount = userAccountBuilder.email(email).build();
+            userAccount = userAccountBuilder.build();
             return repository.save(userAccount);
-        }).orElseThrow(() -> new UserAccountNotFoundException(email));
+        }).orElseThrow(() -> new UserAccountNotFoundException(uid));
         return ResponseEntity.status(201).body(updatedUserAccount);
     }
 
@@ -72,9 +72,9 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUserPersonalInfo(UserPersonalInfo userPersonalInfo, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
-        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
-        UserAccount updatedUserAccount = repository.findUserAccountByEmail(email).map(userAccount -> {
+        String uid = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
+        UserRecord userRecord = firebaseAuth.getUser(uid);
+        UserAccount updatedUserAccount = repository.findById(uid).map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
             userAccount = userAccountBuilder
                     .firstName(userPersonalInfo.firstName)
@@ -88,7 +88,7 @@ public class UserAccountServiceImpl implements UserAccountService {
                     .photoUrl(userRecord.getPhotoUrl())
                     .build();
             return repository.save(userAccount);
-        }).orElseThrow(() -> new UserAccountNotFoundException(email));
+        }).orElseThrow(() -> new UserAccountNotFoundException(uid));
         return ResponseEntity.status(201).body(updatedUserAccount);
     }
 
@@ -105,19 +105,18 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateEmail(String newEmail, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
-        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
+        String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
+        UserRecord userRecord = firebaseAuth.getUser(uid);
         boolean emailExists = repository.existsUserAccountByEmail(newEmail);
         if (emailExists) {
             throw new EmailExistsException(newEmail);
         }
-        UserAccount updatedUserAccount = repository.findUserAccountByEmail(email)
+        UserAccount updatedUserAccount = repository.findById(uid)
                 .map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
             userAccount = userAccountBuilder.email(newEmail).build();
-            repository.deleteById(email);
             return repository.save(userAccount);
-        }).orElseThrow(() -> new UserAccountNotFoundException(email));
+        }).orElseThrow(() -> new UserAccountNotFoundException(uid));
         UserRecord.UpdateRequest request = userRecord.updateRequest().setEmail(newEmail);
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
         updatedUserAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
@@ -128,20 +127,20 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUsername(String newUsername, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
-        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
-        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
+        String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
+        UserRecord userRecord = firebaseAuth.getUser(uid);
         boolean usernameExists = repository.existsUserAccountByUsername(newUsername);
         if (usernameExists) {
             throw new UsernameExistsException(newUsername);
         }
-        UserAccount updatedUserAccount = repository.findUserAccountByEmail(email)
+        UserAccount updatedUserAccount = repository.findById(uid)
                 .map(userAccount -> {
                     UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
                     userAccount = userAccountBuilder
                             .username(newUsername)
                             .build();
                     return repository.save(userAccount);
-                }).orElseThrow(() -> new UserAccountNotFoundException(email));
+                }).orElseThrow(() -> new UserAccountNotFoundException(uid));
         UserRecord.UpdateRequest request = userRecord.updateRequest().setDisplayName(newUsername);
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
         updatedUserAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
@@ -152,11 +151,11 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateProfilePhoto(MultipartFile photo, String authorizationHeader) throws FirebaseAuthException, IOException {
         String accessToken = getBearerToken(authorizationHeader);
-        String email = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
+        String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
         UserAccount userAccount = repository
-                .findUserAccountByEmail(email)
-                .orElseThrow(() -> new UserAccountNotFoundException(email));
-        UserRecord userRecord = firebaseAuth.getUserByEmail(email);
+                .findById(uid)
+                .orElseThrow(() -> new UserAccountNotFoundException(uid));
+        UserRecord userRecord = firebaseAuth.getUser(uid);
         Bucket bucket = StorageClient.getInstance().bucket();
         Blob blob = bucket.create(photo.getOriginalFilename(), photo.getInputStream(), photo.getContentType());
         String mediaUrl = buildMediaUrl(bucket.getName(), blob.getName());
@@ -165,11 +164,6 @@ public class UserAccountServiceImpl implements UserAccountService {
         userAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
         userAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
         return ResponseEntity.status(201).body(userAccount);
-    }
-
-    private String getUIDFromEmail(String email) throws FirebaseAuthException {
-        FirebaseAuth firebaseInstance = FirebaseAuth.getInstance(FirebaseApp.getInstance());
-        return firebaseInstance.getUserByEmail(email).getUid();
     }
 
     private String buildMediaUrl(String bucketName, String blobName) {

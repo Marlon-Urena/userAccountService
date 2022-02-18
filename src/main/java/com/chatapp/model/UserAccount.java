@@ -13,6 +13,9 @@ import javax.persistence.*;
 @Table(name = "user_account")
 public class UserAccount {
     @Id
+    private String uid;
+
+    @Column(unique = true, nullable = false)
     private String email;
 
     @Column(unique = true, nullable = false)
