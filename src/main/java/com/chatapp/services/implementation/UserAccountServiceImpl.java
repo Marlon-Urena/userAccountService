@@ -25,17 +25,16 @@ import java.io.IOException;
 public class UserAccountServiceImpl implements UserAccountService {
 
     private final UserAccountRepository repository;
-    private final FirebaseAuth firebaseAuth;
 
     @Autowired
     public UserAccountServiceImpl(UserAccountRepository repository) {
         this.repository = repository;
-        this.firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
     }
 
     @Override
     public UserAccount findUserAccount(String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
         UserRecord userRecord = firebaseAuth.getUser(uid);
         return repository.findById(uid).map(userAccount -> {
@@ -55,6 +54,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUserAccount(UserAccount newUserDetails, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
         UserAccount updatedUserAccount = repository.findById(uid).map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = newUserDetails.toBuilder();
@@ -72,6 +72,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUserPersonalInfo(UserPersonalInfo userPersonalInfo, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
         UserRecord userRecord = firebaseAuth.getUser(uid);
         UserAccount updatedUserAccount = repository.findById(uid).map(userAccount -> {
@@ -105,6 +106,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateEmail(String newEmail, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
         UserRecord userRecord = firebaseAuth.getUser(uid);
         boolean emailExists = repository.existsUserAccountByEmail(newEmail);
@@ -127,6 +129,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateUsername(String newUsername, String authorizationHeader) throws FirebaseAuthException {
         String accessToken = getBearerToken(authorizationHeader);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
         UserRecord userRecord = firebaseAuth.getUser(uid);
         boolean usernameExists = repository.existsUserAccountByUsername(newUsername);
@@ -151,6 +154,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public ResponseEntity<UserAccount> updateProfilePhoto(MultipartFile photo, String authorizationHeader) throws FirebaseAuthException, IOException {
         String accessToken = getBearerToken(authorizationHeader);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
         UserAccount userAccount = repository
                 .findById(uid)
