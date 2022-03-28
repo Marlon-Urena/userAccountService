@@ -14,12 +14,17 @@ import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
 import com.google.firebase.cloud.StorageClient;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @Service
 public class UserAccountServiceImpl implements UserAccountService {
@@ -156,18 +161,36 @@ public class UserAccountServiceImpl implements UserAccountService {
         String accessToken = getBearerToken(authorizationHeader);
         FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
+        UserRecord userRecord = firebaseAuth.getUser(uid);
+
         UserAccount userAccount = repository
                 .findById(uid)
                 .orElseThrow(() -> new UserAccountNotFoundException(uid));
-        UserRecord userRecord = firebaseAuth.getUser(uid);
+
         Bucket bucket = StorageClient.getInstance().bucket();
         Blob blob = bucket.create(photo.getOriginalFilename(), photo.getInputStream(), photo.getContentType());
         String mediaUrl = buildMediaUrl(bucket.getName(), blob.getName());
+
         UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(mediaUrl);
         UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
         userAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
         userAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
+
         return ResponseEntity.status(201).body(userAccount);
+    }
+
+    @Override
+    public ResponseEntity<List<UserAccount>> findUserAccounts(String searchQuery) {
+        Page<UserAccount> userAccounts;
+        Pageable sortedByUsername =
+                PageRequest.of(0, 20, Sort.by("username"));
+        if (searchQuery == null || searchQuery.isEmpty()) {
+            userAccounts = repository.findAll(sortedByUsername);
+        } else {
+            userAccounts = repository.searchByUsernameContainingIgnoreCase(searchQuery, sortedByUsername);
+        }
+
+        return ResponseEntity.ok(userAccounts.getContent());
     }
 
     private String buildMediaUrl(String bucketName, String blobName) {

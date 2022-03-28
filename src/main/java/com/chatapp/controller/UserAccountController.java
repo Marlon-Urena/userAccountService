@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
 
 @RestController @CrossOrigin
 public class UserAccountController {
@@ -74,6 +75,12 @@ public class UserAccountController {
             @RequestParam("file") MultipartFile photo,
             @RequestHeader(name = "Authorization") String authorizationHeader) throws FirebaseAuthException, IOException {
         return userAccountService.updateProfilePhoto(photo, authorizationHeader);
+    }
+
+    @GetMapping(path = "/contacts")
+    public ResponseEntity<List<UserAccount>> getContacts(
+            @RequestParam(name = "query", required = false) String searchQuery) throws FirebaseAuthException {
+        return userAccountService.findUserAccounts(searchQuery);
     }
 
 }
