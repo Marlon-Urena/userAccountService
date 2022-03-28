@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 public interface UserAccountService {
     UserAccount findUserAccount(String accessToken) throws FirebaseAuthException;
@@ -19,4 +21,5 @@ public interface UserAccountService {
     ResponseEntity<UserAccount> updateEmail(String newEmail, String authorizationHeader) throws FirebaseAuthException;
     ResponseEntity<UserAccount> updateUsername(String newUsername, String authorizationHeader) throws FirebaseAuthException;
     ResponseEntity<UserAccount> updateProfilePhoto(MultipartFile photo, String authorizationHeader) throws FirebaseAuthException, IOException;
+    ResponseEntity<Map<String, List<UserAccount>>> findUserAccounts(String searchQuery) throws FirebaseAuthException;
 }
