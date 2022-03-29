@@ -41,13 +41,9 @@ public class UserAccountServiceImpl implements UserAccountService {
         String accessToken = getBearerToken(authorizationHeader);
         FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
-        UserRecord userRecord = firebaseAuth.getUser(uid);
         return repository.findById(uid).map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
-            return userAccountBuilder
-                    .phoneNumber(userRecord.getPhoneNumber())
-                    .photoUrl(userRecord.getPhotoUrl())
-                    .build();
+            return userAccountBuilder.build();
         }).orElseThrow(() -> new UserAccountNotFoundException(uid));
     }
 
@@ -79,7 +75,6 @@ public class UserAccountServiceImpl implements UserAccountService {
         String accessToken = getBearerToken(authorizationHeader);
         FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getEmail();
-        UserRecord userRecord = firebaseAuth.getUser(uid);
         UserAccount updatedUserAccount = repository.findById(uid).map(userAccount -> {
             UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
             userAccount = userAccountBuilder
@@ -90,8 +85,6 @@ public class UserAccountServiceImpl implements UserAccountService {
                     .state(userPersonalInfo.state)
                     .country(userPersonalInfo.country)
                     .zipCode(userPersonalInfo.zipCode)
-                    .phoneNumber(userRecord.getPhoneNumber())
-                    .photoUrl(userRecord.getPhotoUrl())
                     .build();
             return repository.save(userAccount);
         }).orElseThrow(() -> new UserAccountNotFoundException(uid));
@@ -125,9 +118,7 @@ public class UserAccountServiceImpl implements UserAccountService {
             return repository.save(userAccount);
         }).orElseThrow(() -> new UserAccountNotFoundException(uid));
         UserRecord.UpdateRequest request = userRecord.updateRequest().setEmail(newEmail);
-        UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
-        updatedUserAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
-        updatedUserAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
+        firebaseAuth.updateUser(request);
         return ResponseEntity.status(201).body(updatedUserAccount);
     }
 
@@ -136,7 +127,6 @@ public class UserAccountServiceImpl implements UserAccountService {
         String accessToken = getBearerToken(authorizationHeader);
         FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
-        UserRecord userRecord = firebaseAuth.getUser(uid);
         boolean usernameExists = repository.existsUserAccountByUsername(newUsername);
         if (usernameExists) {
             throw new UsernameExistsException(newUsername);
@@ -149,10 +139,6 @@ public class UserAccountServiceImpl implements UserAccountService {
                             .build();
                     return repository.save(userAccount);
                 }).orElseThrow(() -> new UserAccountNotFoundException(uid));
-        UserRecord.UpdateRequest request = userRecord.updateRequest().setDisplayName(newUsername);
-        UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
-        updatedUserAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
-        updatedUserAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
         return ResponseEntity.status(201).body(updatedUserAccount);
     }
 
@@ -161,7 +147,6 @@ public class UserAccountServiceImpl implements UserAccountService {
         String accessToken = getBearerToken(authorizationHeader);
         FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
-        UserRecord userRecord = firebaseAuth.getUser(uid);
 
         UserAccount userAccount = repository
                 .findById(uid)
@@ -171,16 +156,16 @@ public class UserAccountServiceImpl implements UserAccountService {
         Blob blob = bucket.create(photo.getOriginalFilename(), photo.getInputStream(), photo.getContentType());
         String mediaUrl = buildMediaUrl(bucket.getName(), blob.getName());
 
-        UserRecord.UpdateRequest request = userRecord.updateRequest().setPhotoUrl(mediaUrl);
-        UserRecord updatedUserRecord = firebaseAuth.updateUser(request);
-        userAccount.setPhoneNumber(updatedUserRecord.getPhoneNumber());
-        userAccount.setPhotoUrl(updatedUserRecord.getPhotoUrl());
+        userAccount.setPhotoUrl(mediaUrl);
 
         return ResponseEntity.status(201).body(userAccount);
     }
 
     @Override
-    public ResponseEntity<List<UserAccount>> findUserAccounts(String searchQuery) {
+    public List<UserAccount> findUserAccounts(String searchQuery, String authorizationHeader) throws FirebaseAuthException {
+        String accessToken = getBearerToken(authorizationHeader);
+        FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
+        firebaseAuth.verifyIdToken(accessToken, true).getUid();
         Page<UserAccount> userAccounts;
         Pageable sortedByUsername =
                 PageRequest.of(0, 20, Sort.by("username"));
@@ -190,7 +175,7 @@ public class UserAccountServiceImpl implements UserAccountService {
             userAccounts = repository.searchByUsernameContainingIgnoreCase(searchQuery, sortedByUsername);
         }
 
-        return ResponseEntity.ok(userAccounts.getContent());
+        return userAccounts.getContent();
     }
 
     private String buildMediaUrl(String bucketName, String blobName) {
@@ -198,7 +183,7 @@ public class UserAccountServiceImpl implements UserAccountService {
     }
 
     private String getBearerToken(String authorizationHeader) {
-        String bearerToken = null;
+        String bearerToken = "";
         if (StringUtils.hasText(authorizationHeader) && authorizationHeader.startsWith("Bearer ")) {
             bearerToken = authorizationHeader.substring(7);
         }

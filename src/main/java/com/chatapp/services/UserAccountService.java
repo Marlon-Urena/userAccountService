@@ -20,5 +20,5 @@ public interface UserAccountService {
     ResponseEntity<UserAccount> updateEmail(String newEmail, String authorizationHeader) throws FirebaseAuthException;
     ResponseEntity<UserAccount> updateUsername(String newUsername, String authorizationHeader) throws FirebaseAuthException;
     ResponseEntity<UserAccount> updateProfilePhoto(MultipartFile photo, String authorizationHeader) throws FirebaseAuthException, IOException;
-    ResponseEntity<List<UserAccount>> findUserAccounts(String searchQuery) throws FirebaseAuthException;
+    List<UserAccount> findUserAccounts(String searchQuery, String authorizationHeader) throws FirebaseAuthException;
 }

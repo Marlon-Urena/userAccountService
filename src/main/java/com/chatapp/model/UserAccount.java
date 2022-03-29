@@ -3,6 +3,7 @@ package com.chatapp.model;
 import lombok.*;
 
 import javax.persistence.*;
+import java.time.OffsetDateTime;
 
 @NoArgsConstructor
 @AllArgsConstructor
@@ -29,9 +30,12 @@ public class UserAccount {
     private String country;
     private String zipCode;
 
-    @Transient
+    private String status = "offline";
+
+    @Column(columnDefinition = "TIMESTAMP WITH TIME ZONE")
+    private OffsetDateTime lastActivity = OffsetDateTime.now();
+
     private String phoneNumber;
 
-    @Transient
     private String photoUrl;
 }
