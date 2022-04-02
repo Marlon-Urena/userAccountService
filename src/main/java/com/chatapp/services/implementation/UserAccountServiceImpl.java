@@ -148,17 +148,21 @@ public class UserAccountServiceImpl implements UserAccountService {
         FirebaseAuth firebaseAuth = FirebaseAuth.getInstance(FirebaseApp.getInstance());
         String uid = firebaseAuth.verifyIdToken(accessToken, true).getUid();
 
-        UserAccount userAccount = repository
-                .findById(uid)
-                .orElseThrow(() -> new UserAccountNotFoundException(uid));
-
         Bucket bucket = StorageClient.getInstance().bucket();
         Blob blob = bucket.create(photo.getOriginalFilename(), photo.getInputStream(), photo.getContentType());
         String mediaUrl = buildMediaUrl(bucket.getName(), blob.getName());
 
-        userAccount.setPhotoUrl(mediaUrl);
+        UserAccount updatedUserAccount = repository
+                .findById(uid).map(userAccount -> {
+                    UserAccount.UserAccountBuilder userAccountBuilder = userAccount.toBuilder();
+                    userAccount = userAccountBuilder
+                            .photoUrl(mediaUrl)
+                            .build();
+                    return repository.save(userAccount);
+                })
+                .orElseThrow(() -> new UserAccountNotFoundException(uid));
 
-        return ResponseEntity.status(201).body(userAccount);
+        return ResponseEntity.status(201).body(updatedUserAccount);
     }
 
     @Override
