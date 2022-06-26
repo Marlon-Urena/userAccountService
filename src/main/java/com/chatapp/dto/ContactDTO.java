@@ -1,6 +1,5 @@
 package com.chatapp.dto;
 
-import com.chatapp.model.UserAccount;
 import lombok.Getter;
 import lombok.Setter;
 

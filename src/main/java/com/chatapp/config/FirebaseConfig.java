@@ -3,9 +3,11 @@ package com.chatapp.config;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.cloud.StorageClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.DependsOn;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -15,7 +17,6 @@ import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class FirebaseConfig {
-    @Primary
     @Bean
     public void firebaseInit() {
         try {
@@ -32,5 +33,17 @@ public class FirebaseConfig {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Bean
+    @DependsOn({"firebaseInit"})
+    public StorageClient storageClient() {
+        return StorageClient.getInstance();
+    }
+
+    @Bean
+    @DependsOn({"firebaseInit"})
+    public FirebaseAuth firebaseAuth() {
+        return FirebaseAuth.getInstance();
     }
 }
