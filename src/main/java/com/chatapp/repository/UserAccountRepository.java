@@ -8,7 +8,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface UserAccountRepository extends JpaRepository<UserAccount, String> {
-    Boolean existsUserAccountByUsername(String username);
-    Boolean existsUserAccountByEmail(String email);
+    boolean existsUserAccountByUsername(String username);
+    boolean existsUserAccountByEmail(String email);
+
     Page<UserAccount> searchByUsernameContainingIgnoreCase(String searchQuery, Pageable sortedByUsername);
 }

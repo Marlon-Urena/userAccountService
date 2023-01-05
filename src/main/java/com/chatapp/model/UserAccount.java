@@ -17,7 +17,8 @@ import java.time.OffsetDateTime;
 @Entity
 @Table(name = "user_account")
 public class UserAccount {
-  @Id private String uid;
+  @Id
+  private String uid;
 
   @Column(unique = true, nullable = false)
   private String email;
@@ -32,12 +33,9 @@ public class UserAccount {
   private String state;
   private String country;
   private String zipCode;
-
   private String status = "offline";
-
   @Column(columnDefinition = "TIMESTAMP WITH TIME ZONE")
   private OffsetDateTime lastActivity = OffsetDateTime.now();
-
   private String phoneNumber;
 
   private String photoUrl;

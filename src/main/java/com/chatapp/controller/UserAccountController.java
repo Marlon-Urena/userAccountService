@@ -1,25 +1,25 @@
 package com.chatapp.controller;
 
 import com.chatapp.dto.ContactDTO;
+import com.chatapp.dto.UserPersonalInfo;
+import com.chatapp.dto.UserResponseDTO;
 import com.chatapp.model.UserAccount;
-import com.chatapp.model.UserPersonalInfo;
-import com.chatapp.services.UserAccountService;
-import com.google.firebase.auth.FirebaseAuth;
+import com.chatapp.service.UserAccountService;
 import com.google.firebase.auth.FirebaseAuthException;
-import com.google.firebase.auth.FirebaseToken;
 import com.google.firebase.auth.UserRecord.UpdateRequest;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 
-@RestController @CrossOrigin
+@RestController
+@CrossOrigin
+@RequestMapping("/api/v1/users")
 public class UserAccountController {
 
     private final UserAccountService userAccountService;
@@ -32,117 +32,78 @@ public class UserAccountController {
         this.modelMapper = modelMapper;
     }
 
-    @PostMapping(path = "/user")
-    public UserAccount getUser(@RequestHeader(name = "Authorization", required = false) String authHeader) throws FirebaseAuthException {
-        String idToken = getBearerToken(authHeader);
-        FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-
-        return userAccountService.findUserAccount(firebaseToken.getUid());
+    @ResponseStatus(HttpStatus.OK)
+    @GetMapping(path = "/{userId}")
+    public UserResponseDTO getUser(@PathVariable String userId) {
+        return userAccountService.findUserAccount(userId);
     }
 
-    @PostMapping(path = "/register")
-    public ResponseEntity<UserAccount> createUser(@RequestBody UserAccount newUserAccount) {
+    @ResponseStatus(code = HttpStatus.OK)
+    @GetMapping("/search/contacts")
+    public List<ContactDTO> getContacts(@RequestParam(name = "username", required = false) String username,
+                                        Pageable pageable) {
+        return userAccountService.findUserAccounts(username, pageable);
+    }
+
+    @ResponseStatus(HttpStatus.CREATED)
+    @PostMapping
+    public UserResponseDTO createUser(@RequestBody UserAccount newUserAccount) {
         return userAccountService.addUserAccount(newUserAccount);
     }
 
-    @PostMapping(path = "/email-availability")
-    public Boolean checkEmailAvailability(@RequestBody String email) {
-        return userAccountService.checkEmailAvailability(email);
+    @ResponseStatus(HttpStatus.OK)
+    @PostMapping(path = "/email_availability")
+    public boolean isEmailAvailable(@RequestBody String email) {
+        return userAccountService.isEmailAvailable(email);
     }
 
-    @PostMapping(path = "/username-availability")
-    public Boolean checkUsernameAvailability(@RequestBody String username) {
-        return userAccountService.checkUsernameAvailability(username);
+    @ResponseStatus(HttpStatus.OK)
+    @PostMapping(path = "/username_availability")
+    public boolean isUsernameAvailable(@RequestBody String username) {
+        return userAccountService.isUsernameAvailable(username);
     }
 
-    @PutMapping(path = "/user")
-    public ResponseEntity<UserAccount> updateUser(
-            @RequestBody UserAccount userAccount,
-            @RequestHeader(name = "Authorization", required = false) String authHeader) throws FirebaseAuthException {
-
-        String idToken = getBearerToken(authHeader);
-        FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-
-        return userAccountService.updateUserAccount(userAccount, firebaseToken.getUid());
+    @ResponseStatus(code = HttpStatus.OK)
+    @PutMapping(path = "/{userId}")
+    public UserResponseDTO updateUser(@PathVariable String userId, @RequestBody UserAccount userAccount) {
+        return userAccountService.updateUserAccount(userAccount, userId);
     }
 
-    @PutMapping(path = "/user/personal_info")
-    public ResponseEntity<UserAccount> updateUserPersonalInfo(
-            @RequestBody UserPersonalInfo userPersonalInfo,
-            @RequestHeader(name = "Authorization", required = false) String authHeader) throws FirebaseAuthException {
-
-        String idToken = getBearerToken(authHeader);
-        FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-
-        return userAccountService.updateUserPersonalInfo(userPersonalInfo, firebaseToken.getUid());
+    @ResponseStatus(code = HttpStatus.OK)
+    @PutMapping(path = "/{userId}/personal_info")
+    public UserResponseDTO updateUserPersonalInfo(@PathVariable String userId, @RequestBody UserPersonalInfo userPersonalInfo) {
+        return userAccountService.updateUserPersonalInfo(userPersonalInfo, userId);
     }
 
-    @PatchMapping(path = "/user/change_email")
-    public ResponseEntity<UserAccount> updateEmail(
-            @RequestBody String newEmail,
-            @RequestHeader(name = "Authorization", required = false) String authHeader) throws FirebaseAuthException {
-        String idToken = getBearerToken(authHeader);
-        FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-        UpdateRequest request = new UpdateRequest(firebaseToken.getUid()).setEmail(newEmail);
+    @ResponseStatus(code = HttpStatus.OK)
+    @PatchMapping(path = "/{userId}/email")
+    public UserResponseDTO updateEmail(@PathVariable String userId, @RequestBody String newEmail) throws FirebaseAuthException {
+        UpdateRequest request = new UpdateRequest(userId).setEmail(newEmail);
 
-        return userAccountService.updateEmail(newEmail, firebaseToken.getUid(), request);
+        return userAccountService.updateEmail(newEmail, userId, request);
+    }
+    @ResponseStatus(code = HttpStatus.OK)
+    @PatchMapping(path = "/{userId}/username")
+    public UserResponseDTO updateUsername(@PathVariable String userId, @RequestBody String newUsername) throws FirebaseAuthException {
+        UpdateRequest request = new UpdateRequest(userId).setDisplayName(newUsername);
+
+        return userAccountService.updateUsername(newUsername, userId, request);
     }
 
-    @PatchMapping(path = "/user/change_username")
-    public ResponseEntity<UserAccount> updateUsername(
-            @RequestBody String newUsername,
-            @RequestHeader(name = "Authorization") String authHeader) throws FirebaseAuthException {
+    @ResponseStatus(code = HttpStatus.OK)
+    @PatchMapping(path = "/{userId}/profile_photo")
+    public UserResponseDTO updateProfilePhoto(
+            @PathVariable String userId,
+            @RequestParam("file") MultipartFile photo)
+            throws IOException {
 
-        String idToken = getBearerToken(authHeader);
-        FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-
-        return userAccountService.updateUsername(newUsername, firebaseToken.getUid());
-    }
-
-    @PostMapping(path = "/user/change_profile_photo")
-    public ResponseEntity<UserAccount> updateProfilePhoto(
-            @RequestParam("file") MultipartFile photo,
-            @RequestHeader(name = "Authorization", required = false) String authHeader)
-            throws FirebaseAuthException, IOException {
-        String idToken = getBearerToken(authHeader);
-        FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-
-        return userAccountService.updateProfilePhoto(photo, firebaseToken.getUid());
-    }
-
-    @GetMapping(path = "/user/search")
-    public ResponseEntity<List<ContactDTO>> getContacts(
-            @RequestParam(name = "query", required = false) String searchQuery,
-            @RequestHeader(name = "Authorization", required = false) String authHeader) throws FirebaseAuthException {
-        String idToken = getBearerToken(authHeader);
-        FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(idToken);
-        List<UserAccount> userAccounts = userAccountService.findUserAccounts(searchQuery, firebaseToken.getUid());
-
-        return ResponseEntity.ok(
-                userAccounts.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList())
-        );
-
+        return userAccountService.updateProfilePhoto(photo, userId);
     }
 
     private ContactDTO convertToDto(UserAccount userAccount) {
         ContactDTO contactDTO = modelMapper.map(userAccount, ContactDTO.class);
 
-        String fullName = userAccount.getFirstName() == null || userAccount.getLastName() == null
-                ? "" : userAccount.getFirstName() + " " + userAccount.getLastName();
-
-        contactDTO.setName(fullName);
         contactDTO.setAvatar(userAccount.getPhotoUrl());
-        contactDTO.setId(userAccount.getUid());
         return contactDTO;
-    }
-
-    private String getBearerToken(String authHeader) {
-        String bearerToken = "";
-        if (StringUtils.hasText(authHeader) && authHeader.startsWith("Bearer ")) {
-            bearerToken = authHeader.substring(7);
-        }
-        return bearerToken;
     }
 }
